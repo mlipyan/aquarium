@@ -3914,7 +3914,8 @@ function spawnFood(canvasX, canvasY) {
       eaten: false,
       eatenTimer: 0,
       wobblePhase: Math.random() * Math.PI * 2,
-      hue: Math.floor(Math.random() * 3), // variety
+      hue: Math.floor(Math.random() * 3),
+      age: 0,
     });
   }
 }
@@ -3935,10 +3936,11 @@ function updateFood(dt) {
       f.eatenTimer += dt;
       f.life -= dt * 5;
       f.size *= 0.88;
-      // Pull into whichever fish ate it
+      // Pull into whichever creature ate it
       let mx, my;
       if (f.eatenBy === 'lion') { mx = lionMX; my = lionMY; }
       else if (f.eatenBy === 'clown') { mx = clownMX; my = clownMY; }
+      else if (f.eatenBy === 'crab') { mx = hermitCrab.x; my = hermitCrab.y - 3; }
       else {
         // small fish
         const idx = parseInt(f.eatenBy.replace('small', ''));
@@ -3965,6 +3967,33 @@ function updateFood(dt) {
       f.y = gravelY;
       f.vy = 0;
       f.vx *= 0.95;
+    }
+
+    // Age food — fade and vanish after 15 seconds
+    f.age += dt;
+    if (f.age > 12) {
+      // Fade out over last 3 seconds
+      f.life = Math.max(0, 1 - (f.age - 12) / 3);
+    }
+    if (f.age > 15) {
+      foodMorsels.splice(i, 1);
+      continue;
+    }
+
+    // Hermit crab snap — if food lands near crab, he grabs it with his claw
+    const crabDx = f.x - hermitCrab.x;
+    const crabDy = f.y - hermitCrab.y;
+    const crabDist = Math.sqrt(crabDx * crabDx + crabDy * crabDy);
+    if (crabDist < 25 && f.y > gravelY - 10) {
+      f.eaten = true;
+      f.eatenBy = 'crab';
+      // Make crab peek out briefly to grab it
+      if (hermitCrab.state === 'hidden') {
+        hermitCrab.state = 'peeking';
+        hermitCrab.stateTimer = 0;
+      }
+      spawnCreatureBubble(hermitCrab.x, hermitCrab.y - 5);
+      continue;
     }
 
     // Keep inside bowl
